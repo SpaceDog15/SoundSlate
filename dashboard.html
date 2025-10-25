@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoundSlate - Dashboards</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+
+    <script>
+        // Custom color palette from the video
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'accent': '#EC4899',     // Pink/rose accent
+                        'accent-dark': '#D81B60',   // Darker pink for hover
+                        'bg-light': '#F9FAFB',     // Main page background
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F9FAFB; /* bg-light */
+        }
+        
+        .page {
+            display: none; /* All pages hidden by default */
+        }
+        .page.active {
+            display: block; /* Active page is shown */
+        }
+
+        /* Toast Notification styles */
+        .toast-notification {
+            @apply fixed top-5 right-5 bg-blue-600 text-white px-6 py-4 rounded-lg shadow-xl z-[100] transform translate-x-full transition-transform duration-300 ease-out;
+        }
+        .toast-notification.show {
+            @apply translate-x-0;
+        }
+
+        /* Chat Bubble styles */
+        .chat-bubble {
+            @apply px-4 py-2 rounded-lg max-w-xs;
+        }
+        .chat-bubble-user {
+            @apply bg-accent text-white self-end rounded-br-none;
+        }
+        .chat-bubble-ai {
+            @apply bg-gray-200 text-gray-800 self-start rounded-bl-none;
+        }
+        .chat-bubble-ai.thinking {
+            @apply italic text-gray-500;
+        }
+
+        /* Custom Donut Chart Legend */
+        .chart-legend-item {
+            @apply flex items-center text-sm text-gray-600;
+        }
+        .chart-legend-dot {
+            @apply w-3 h-3 rounded-full mr-2;
+        }
+
+        /* Style for active nav link (button-like) */
+        .nav-link.active {
+            @apply bg-accent text-white rounded-lg shadow-md;
+        }
+        .nav-link.active:hover {
+            @apply bg-accent-dark;
+        }
+
+        /* Style for inactive nav link (text-like) */
+        .nav-link.inactive {
+            @apply text-gray-500 hover:bg-gray-100 hover:text-gray-900;
+        }
+        
+    </style>
+</head>
+<body class="min-h-full">
+
+    <!-- PAGE 1: HOME DASHBOARD -->
+    <div id="page-home" class="page active">
+        <header class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <!-- Logo and Nav -->
+                    <div class="flex items-center space-x-4">
+                        <div class="text-2xl font-bold text-accent">SOUNDSLATE</div>
+                        <nav class="hidden md:flex space-x-2">
+                            <a href="#" onclick="navigateTo('page-home')" data-page="page-home" class="nav-link active flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium">
+                                <ion-icon name="home-outline" class="text-xl"></ion-icon> Home
+                            </a>
+                            <a href="#" onclick="navigateTo('page-progress')" data-page="page-progress" class="nav-link inactive flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium">
+                                <ion-icon name="stats-chart-outline" class="text-xl"></ion-icon> Progress
+                            </a>
+                            <a href="#" onclick="showToast('Insights feature is not yet implemented.', 'info')" class="nav-link inactive flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium">
+                                <ion-icon name="bulb-outline" class="text-xl"></ion-icon> Insights
+                            </a>
+                            <a href="#" onclick="showToast('Reports feature is not yet implemented.', 'info')" class="nav-link inactive flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium">
+                                <ion-icon name="document-text-outline" class="text-xl"></ion-icon> Reports
+                            </a>
+                        </nav>
+                    </div>
+                    <!-- User Menu and Logout -->
+                    <div class="flex items-center space-x-4">
+                        <button class="text-gray-500 hover:text-gray-700">
+                            <ion-icon name="notifications-outline" class="text-2xl"></ion-icon>
+                        </button>
+                        <div class="flex items-center space-x-2">
+                            <div id="user-avatar-home" class="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-semibold">D</div>
+                            <span id="user-name-home" class="hidden md:block text-sm font-medium text-gray-700">Hi, Devi!</span>
+                        </div>
+                        <button onclick="document.getElementById('logout-modal').classList.remove('hidden')" class="text-gray-500 hover:text-gray-700">
+                            <ion-icon name="log-out-outline" class="text-2xl"></ion-icon>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div class="px-4 py-6 sm:px-0">
+                <!-- Welcome Banner -->
+                <div class="bg-gradient-to-r from-accent to-pink-400 text-white p-6 md:p-8 rounded-xl shadow-lg mb-8 flex justify-between items-center">
+                    <div>
+                        <h1 id="welcome-banner" class="text-3xl font-bold">Welcome back, Devi!</h1>
+                        <p class="mt-1 text-lg text-pink-100">Track your child's learning journey with powerful insights.</p>
+                    </div>
+                    <div>
+                        <button onclick="navigateTo('page-progress')" class="bg-white text-accent font-semibold px-5 py-3 rounded-lg shadow-md hover:bg-gray-100 transition duration-200 flex items-center gap-2">
+                            <ion-icon name="bar-chart-outline" class="text-xl"></ion-icon>
+                            View Dashboard
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stat Cards -->
+                <h2 class="text-2xl font-semibold text-gray-900 mb-4">Your Child's Progress Overview</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
+                        <div class="p-3 rounded-full bg-pink-100 text-accent">
+                            <ion-icon name="checkmark-done-circle-outline" class="text-3xl"></ion-icon>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-bold text-gray-900">27</div>
+                            <div class="text-sm text-gray-500">Tasks Completed</div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
+                        <div class="p-3 rounded-full bg-pink-100 text-accent">
+                            <ion-icon name="time-outline" class="text-3xl"></ion-icon>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-bold text-gray-900">2.5h</div>
+                            <div class="text-sm text-gray-500">Study Time Today</div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
+                        <div class="p-3 rounded-full bg-pink-100 text-accent">
+                            <ion-icon name="trending-up-outline" class="text-3xl"></ion-icon>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-bold text-gray-900">85%</div>
+                            <div class="text-sm text-gray-500">Success Rate</div>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md flex items-center space-x-4">
+                        <div class="p-3 rounded-full bg-green-100 text-green-600">
+                            <ion-icon name="arrow-up-circle-outline" class="text-3xl"></ion-icon>
+                        </div>
+                        <div>
+                            <div class="text-3xl font-bold text-green-600">+12%</div>
+                            <div class="text-sm text-gray-500">Weekly Improvement</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Key Features -->
+                <h2 class="text-2xl font-semibold text-gray-900 mb-4">Key Features</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <div class="p-3 rounded-full bg-pink-100 text-accent w-12 h-12 flex items-center justify-center mb-3">
+                            <ion-icon name="analytics-outline" class="text-3xl"></ion-icon>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">Real-time Tracking</h3>
+                        <p class="text-gray-600 text-sm">Monitor your child's learning progress across all subjects with live updates.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <div class="p-3 rounded-full bg-pink-100 text-accent w-12 h-12 flex items-center justify-center mb-3">
+                            <ion-icon name="alert-circle-outline" class="text-3xl"></ion-icon>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">Early Warnings</h3>
+                        <p class="text-gray-600 text-sm">Get instant alerts when your child struggles with specific topics.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <div class="p-3 rounded-full bg-pink-100 text-accent w-12 h-12 flex items-center justify-center mb-3">
+                            <ion-icon name="bulb-outline" class="text-3xl"></ion-icon>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">AI Insights</h3>
+                        <p class="text-gray-600 text-sm">Receive personalized recommendations and learning strategies.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <div class="p-3 rounded-full bg-pink-100 text-accent w-12 h-12 flex items-center justify-center mb-3">
+                            <ion-icon name="people-outline" class="text-3xl"></ion-icon>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">Teacher Connect</h3>
+                        <p class="text-gray-600 text-sm">Direct communication channel with teachers for discussing progress.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <div class="p-3 rounded-full bg-pink-100 text-accent w-12 h-12 flex items-center justify-center mb-3">
+                            <ion-icon name="phone-portrait-outline" class="text-3xl"></ion-icon>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">Mobile Access</h3>
+                        <p class="text-gray-600 text-sm">Stay connected to your child's progress anywhere, anytime.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md">
+                        <div class="p-3 rounded-full bg-pink-100 text-accent w-12 h-12 flex items-center justify-center mb-3">
+                            <ion-icon name="document-text-outline" class="text-3xl"></ion-icon>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-900 mb-1">Detailed Reports</h3>
+                        <p class="text-gray-600 text-sm">Generate comprehensive progress reports for parent-teacher meetings.</p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- PAGE 2: PROGRESS DASHBOARD -->
+    <div id="page-progress" class="page">
+        <header class="bg-white shadow-sm sticky top-0 z-30">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <!-- Logo and Nav -->
+                    <div class="flex items-center space-x-4">
+                        <div class="text-2xl font-bold text-accent">SOUNDSLATE</div>
+                        <nav class="hidden md:flex space-x-2">
+                            <a href="#" onclick="navigateTo('page-home')" data-page="page-home" class="nav-link inactive flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium">
+                                <ion-icon name="home-outline" class="text-xl"></ion-icon> Home
+                            </a>
+                            <a href="#" onclick="navigateTo('page-progress')" data-page="page-progress" class="nav-link active flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium">
+                                <ion-icon name="stats-chart-outline" class="text-xl"></ion-icon> Progress
+                            </a>
+                            <a href="#" onclick="showToast('Insights feature is not yet implemented.', 'info')" class="nav-link inactive flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium">
+                                <ion-icon name="bulb-outline" class="text-xl"></ion-icon> Insights
+                            </a>
+                            <a href="#" onclick="showToast('Reports feature is not yet implemented.', 'info')" class="nav-link inactive flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium">
+                                <ion-icon name="document-text-outline" class="text-xl"></ion-icon> Reports
+                            </a>
+                        </nav>
+                    </div>
+                    <!-- User Menu and Logout -->
+                    <div class="flex items-center space-x-4">
+                        <button class="text-gray-500 hover:text-gray-700">
+                            <ion-icon name="notifications-outline" class="text-2xl"></ion-icon>
+                        </button>
+                        <div class="flex items-center space-x-2">
+                            <div id="user-avatar-progress" class="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-semibold">D</div>
+                            <span id="user-name-progress" class="hidden md:block text-sm font-medium text-gray-700">Hi, Devi!</span>
+                        </div>
+                        <button onclick="document.getElementById('logout-modal').classList.remove('hidden')" class="text-gray-500 hover:text-gray-700">
+                            <ion-icon name="log-out-outline" class="text-2xl"></ion-icon>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- Sub-Header Banner -->
+            <div class="bg-accent text-white">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col md:flex-row justify-between items-center">
+                    <div>
+                        <h1 id="progress-welcome" class="text-2xl font-bold">Hi Devi!</h1>
+                        <p class="text-sm text-pink-100">Let's check your child's learning progress today.</p>
+                    </div>
+                    <div class="flex items-center space-x-4 mt-4 md:mt-0">
+                        <div class="flex items-center space-x-2">
+                            <div class="p-2 bg-white/20 rounded-lg">
+                                <ion-icon name="checkmark-done-outline" class="text-2xl"></ion-icon>
+                            </div>
+                            <div>
+                                <div class="text-xl font-bold">27</div>
+                                <div class="text-xs text-pink-100">Tasks Completed</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="p-2 bg-white/20 rounded-lg">
+                                <ion-icon name="time-outline" class="text-2xl"></ion-icon>
+                            </div>
+                            <div>
+                                <div class="text-xl font-bold">2.5h</div>
+                                <div class="text-xs text-pink-100">Study Time</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <div class="p-2 bg-white/20 rounded-lg">
+                                <ion-icon name="trending-up-outline" class="text-2xl"></ion-icon>
+                            </div>
+                            <div>
+                                <div class="text-xl font-bold">85%</div>
+                                <div class="text-xs text-pink-100">Success Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <div class="px-4 py-6 sm:px-0">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Left Column -->
+                    <div class="lg:col-span-2 space-y-6">
+                        
+                        <!-- Learning Progress -->
+                        <div class="bg-white p-6 rounded-xl shadow-md">
+                            <h3 class="text-xl font-semibold text-gray-900 mb-4">Learning Progress</h3>
+                            <div class="space-y-5">
+                                <!-- Easy -->
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-base font-medium text-green-700">Easy (5)</span>
+                                        <span class="text-sm font-medium text-green-700">5/20</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                        <div class="bg-green-500 h-2.5 rounded-full" style="width: 25%"></div>
+                                    </div>
+                                    <div class="flex justify-between items-center mt-1">
+                                        <span class="text-xs text-gray-500">25% completed</span>
+                                        <span class="text-xs text-gray-500">2h 30m spent</span>
+                                    </div>
+                                </div>
+                                <!-- Moderate -->
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-base font-medium text-orange-700">Moderate (4)</span>
+                                        <span class="text-sm font-medium text-orange-700">4/20</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                        <div class="bg-orange-500 h-2.5 rounded-full" style="width: 20%"></div>
+                                    </div>
+                                    <div class="flex justify-between items-center mt-1">
+                                        <span class="text-xs text-gray-500">20% completed</span>
+                                        <span class="text-xs text-gray-500">1h 45m spent</span>
+                                    </div>
+                                </div>
+                                <!-- Difficult -->
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="text-base font-medium text-red-700">Difficult (10)</span>
+                                        <span class="text-sm font-medium text-red-700">10/20</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                        <div class="bg-red-500 h-2.5 rounded-full" style="width: 50%"></div>
+                                    </div>
+                                    <div class="flex justify-between items-center mt-1">
+                                        <span class="text-xs text-gray-500">50% completed</span>
+                                        <span class="text-xs text-gray-500">3h 15m spent</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activities -->
+                        <div class="bg-white p-6 rounded-xl shadow-md">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-xl font-semibold text-gray-900">Recent Activities</h3>
+                                <a href="#" class="text-sm font-medium text-accent hover:underline">View All</a>
+                            </div>
+                            <ul class="space-y-4">
+                                <li class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="p-2 rounded-full bg-green-100 text-green-600"><ion-icon name="checkmark-outline" class="text-xl"></ion-icon></div>
+                                        <div>
+                                            <p class="font-medium text-gray-900">Completed Math Quiz</p>
+                                            <p class="text-sm text-gray-500">Score: 8/10 • 2 hours ago</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm font-semibold text-green-600">Good</span>
+                                </li>
+                                <li class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="p-2 rounded-full bg-yellow-100 text-yellow-600"><ion-icon name="reload-outline" class="text-xl"></ion-icon></div>
+                                        <div>
+                                            <p class="font-medium text-gray-900">Struggled with Division</p>
+                                            <p class="text-sm text-gray-500">Multiple attempts needed • 3 hours ago</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm font-semibold text-yellow-600">Needs Review</span>
+                                </li>
+                                 <li class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="p-2 rounded-full bg-green-100 text-green-600"><ion-icon name="book-outline" class="text-xl"></ion-icon></div>
+                                        <div>
+                                            <p class="font-medium text-gray-900">Excellent Reading Progress</p>
+                                            <p class="text-sm text-gray-500">Read 2 chapters • Yesterday</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm font-semibold text-green-600">Excellent</span>
+                                </li>
+                                <li class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                    <div class="flex items-center space-x-3">
+                                        <div class="p-2 rounded-full bg-blue-100 text-blue-600"><ion-icon name="leaf-outline" class="text-xl"></ion-icon></div>
+                                        <div>
+                                            <p class="font-medium text-gray-900">Started Science Module</p>
+                                            <p class="text-sm text-gray-500">Chapter 1: Plants • Yesterday</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-sm font-semibold text-blue-600">In Progress</span>
+                                </li>
+                            </ul>
+                        </div>
+                        
+                        <!-- Recommended Actions -->
+                        <div class="bg-white p-6 rounded-xl shadow-md">
+                            <h3 class="text-xl font-semibold text-gray-900 mb-4">Recommended Actions</h3>
+                            <ul class="space-y-3">
+                                <li class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                    <div class="flex items-center">
+                                        <span class="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded-full mr-3">HIGH</span>
+                                        <div>
+                                            <p class="font-medium text-gray-900">Schedule Math Practice</p>
+                                            <p class="text-sm text-gray-600">Book a session with math tutor for multiplication tables.</p>
+                                        </div>
+                                    </div>
+                                    <button class="bg-accent text-white font-medium px-4 py-2 rounded-lg text-sm hover:bg-accent-dark">Schedule</button>
+                                </li>
+                                <li class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                    <div class="flex items-center">
+                                        <span class="text-xs font-bold text-orange-600 bg-orange-100 px-2 py-1 rounded-full mr-3">MEDIUM</span>
+                                        <div>
+                                            <p class="font-medium text-gray-900">Parent-Teacher Meeting</p>
+                                            <p class="text-sm text-gray-600">Discuss reading progress and next steps.</p>
+                                        </div>
+                                    </div>
+                                    <button class="bg-accent text-white font-medium px-4 py-2 rounded-lg text-sm hover:bg-accent-dark">Book Meeting</button>
+                                </li>
+                                <li class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                                    <div class="flex items-center">
+                                        <span class="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded-full mr-3">LOW</span>
+                                        <div>
+                                            <p class="font-medium text-gray-900">Update Learning Goals</p>
+                                            <p class="text-sm text-gray-600">Review and adjust quarterly learning objectives.</p>
+                                        </div>
+                                    </div>
+                                    <button class="bg-accent text-white font-medium px-4 py-2 rounded-lg text-sm hover:bg-accent-dark">Update</button>
+                                </li>
+                            </ul>
+                        </div>
+
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="lg:col-span-1 space-y-6">
+                        <!-- Subject Performance -->
+                        <div class="bg-white p-6 rounded-xl shadow-md">
+                            <h3 class="text-xl font-semibold text-gray-900 mb-4">Subject Performance</h3>
+                            <div class="chart-container relative w-full h-56">
+                                <canvas id="subjectChart"></canvas>
+                                <div class="absolute inset-0 flex items-center justify-center flex-col">
+                                    <span class="text-3xl font-bold text-gray-900">78%</span>
+                                    <span class="text-sm text-gray-500">Average</span>
+                                </div>
+                            </div>
+                            <!-- Custom HTML Legend -->
+                            <div id="subject-chart-legend" class="grid grid-cols-2 gap-x-4 gap-y-2 mt-4">
+                                <div class="chart-legend-item">
+                                    <span class="chart-legend-dot" style="background-color: #EF4444;"></span>
+                                    <span>Mathematics</span>
+                                </div>
+                                <div class="chart-legend-item">
+                                    <span class="chart-legend-dot" style="background-color: #3B82F6;"></span>
+                                    <span>English</span>
+                                </div>
+                                <div class="chart-legend-item">
+                                    <span class="chart-legend-dot" style="background-color: #F59E0B;"></span>
+                                    <span>Science</span>
+                                </div>
+                                <div class="chart-legend-item">
+                                    <span class="chart-legend-dot" style="background-color: #10B981;"></span>
+                                    <span>Social Studies</span>
+                                </div>
+                                <div class="chart-legend-item">
+                                    <span class="chart-legend-dot" style="background-color: #8B5CF6;"></span>
+                                    <span>Arts</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- AI Learning Insights -->
+                        <div class="bg-white p-6 rounded-xl shadow-md">
+                            <h3 class="text-xl font-semibold text-gray-900 mb-4">AI Learning Insights</h3>
+                            <ul class="space-y-4">
+                                <li class="flex items-start space-x-3">
+                                    <div class="p-2 rounded-full bg-pink-100 text-accent mt-1"><ion-icon name="bulb-outline" class="text-xl"></ion-icon></div>
+                                    <div>
+                                        <p class="font-medium text-gray-900">Focus Area Identified</p>
+                                        <p class="text-sm text-gray-600">Akash shows difficulty with multiplication tables 6-9. Consider extra practice.</p>
+                                        <button class="text-sm font-semibold text-accent hover:underline mt-1">Get Resources</button>
+                                    </div>
+                                </li>
+                                <li class="flex items-start space-x-3">
+                                    <div class="p-2 rounded-full bg-pink-100 text-accent mt-1"><ion-icon name="trending-up-outline" class="text-xl"></ion-icon></div>
+                                    <div>
+                                        <p class="font-medium text-gray-900">Progress Trend</p>
+                                        <p class="text-sm text-gray-600">Reading comprehension has improved by 15% this week. Great progress!</p>
+                                        <button class="text-sm font-semibold text-accent hover:underline mt-1">View Details</button>
+                                    </div>
+                                </li>
+                                <li class="flex items-start space-x-3">
+                                    <div class="p-2 rounded-full bg-pink-100 text-accent mt-1"><ion-icon name="alarm-outline" class="text-xl"></ion-icon></div>
+                                    <div>
+                                        <p class="font-medium text-gray-900">Optimal Study Time</p>
+                                        <p class="text-sm text-gray-600">Best performance observed between 4-6 PM. Schedule important topics during this time.</p>
+                                        <button class="text-sm font-semibold text-accent hover:underline mt-1">Set Reminder</button>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- FLOATING ACTION BUTTONS (FABs) -->
+    <!-- Hidden by default, shown by JS when on page-progress -->
+    <div id="fab-container" class="fixed bottom-6 right-6 space-y-3 z-40 hidden">
+        <button onclick="showToast('Connecting to teacher... (Demo)', 'info')" class="bg-accent text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-110" title="Chat with Teacher">
+            <ion-icon name="people-outline" class="text-3xl"></ion-icon>
+        </button>
+        <button onclick="handleGenerateReport()" class="bg-accent text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-110" title="Generate Report">
+            <ion-icon name="document-text-outline" class="text-3xl"></ion-icon>
+        </button>
+        <button onclick="toggleChat()" class="bg-accent text-white w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-transform hover:scale-110" title="AI Assistant">
+            <ion-icon name="chatbubbles-outline" class="text-3xl"></ion-icon>
+        </button>
+    </div>
+
+    <!-- AI CHAT WIDGET -->
+    <div id="chat-widget" class="fixed bottom-24 right-6 w-80 h-96 bg-white rounded-2xl shadow-2xl z-40 hidden flex-col overflow-hidden border border-gray-200">
+        <div class="p-4 bg-accent text-white flex justify-between items-center">
+            <h3 class="font-semibold text-lg">Boo - AI Assistant</h3>
+            <button onclick="toggleChat()" class="text-pink-200 hover:text-white">
+                <ion-icon name="close-outline" class="text-2xl"></ion-icon>
+            </button>
+        </div>
+        <div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto">
+            <div class="flex">
+                <div class="chat-bubble chat-bubble-ai">
+                    Hi! I'm Boo. How can I help you understand your child's progress today?
+                </div>
+            </div>
+        </div>
+        <div class="p-4 border-t border-gray-200 bg-white">
+            <form id="chat-form" class="flex items-center gap-2">
+                <input id="chat-input" type="text" placeholder="Ask about progress..." class="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-accent">
+                <button type="submit" class="bg-accent text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-accent-dark">
+                    <ion-icon name="arrow-up-outline" class="text-xl"></ion-icon>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- LOGOUT CONFIRMATION MODAL -->
+    <div id="logout-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-sm">
+            <h3 class="text-lg font-medium text-gray-900 mb-2">Are you sure?</h3>
+            <p class="text-sm text-gray-600 mb-4">Are you sure you want to log out?</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="document.getElementById('logout-modal').classList.add('hidden')" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">
+                    Cancel
+                </button>
+                <button onclick="handleLogout()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- REPORT MODAL -->
+    <div id="report-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                 <h3 class="text-xl font-semibold text-gray-900">AI-Generated Progress Report</h3>
+                 <button onclick="document.getElementById('report-modal').classList.add('hidden')" class="text-gray-500 hover:text-gray-800">
+                     <ion-icon name="close-outline" class="text-3xl"></ion-icon>
+                 </button>
+            </div>
+            <div class="overflow-y-auto">
+                <pre id="report-content" class="text-sm text-gray-700 whitespace-pre-wrap font-sans bg-gray-50 p-4 rounded-lg border"></pre>
+            </div>
+             <div class="flex justify-end space-x-3 mt-6">
+                <button onclick="document.getElementById('report-modal').classList.add('hidden')" class="px-5 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-notification" class="toast-notification">
+        <p id="toast-message">Default Toast Message</p>
+    </div>
+
+    <script>
+        let currentUserName = "Devi"; // Default name
+        let subjectChart = null; // To hold the chart instance
+
+        // --- Page Navigation ---
+
+        function navigateTo(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(page => {
+                page.classList.remove('active');
+            });
+            
+            // Show the target page
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            }
+
+            // Show/hide Floating Action Buttons
+            const fabContainer = document.getElementById('fab-container');
+            if (pageId === 'page-progress') {
+                fabContainer.classList.remove('hidden');
+                fabContainer.classList.add('flex', 'flex-col');
+            } else {
+                fabContainer.classList.add('hidden');
+                fabContainer.classList.remove('flex', 'flex-col');
+            }
+
+            // Update navigation highlights in BOTH headers
+            document.querySelectorAll('.nav-link').forEach(link => {
+                const linkPage = link.getAttribute('data-page');
+                
+                // Reset all links
+                link.classList.remove('active', 'bg-accent', 'text-white', 'hover:bg-accent-dark', 'shadow-md');
+                link.classList.add('inactive', 'text-gray-500', 'hover:bg-gray-100', 'hover:text-gray-900');
+                
+                // Apply active style if it matches the current pageId
+                if (linkPage === pageId) {
+                    link.classList.remove('inactive', 'text-gray-500', 'hover:bg-gray-100', 'hover:text-gray-900');
+                    link.classList.add('active', 'bg-accent', 'text-white', 'hover:bg-accent-dark', 'shadow-md');
+                }
+            });
+        }
+
+        // --- Chart.js Rendering ---
+
+        function renderSubjectChart() {
+            const ctx = document.getElementById('subjectChart').getContext('2d');
+            const chartData = {
+                labels: ['Mathematics', 'English', 'Science', 'Social Studies', 'Arts'],
+                datasets: [{
+                    data: [85, 90, 70, 78, 82],
+                    backgroundColor: [
+                        '#EF4444', // Red-500
+                        '#3B82F6', // Blue-500
+                        '#F59E0B', // Amber-500
+                        '#10B981', // Emerald-500
+                        '#8B5CF6', // Violet-500
+                    ],
+                    borderColor: '#ffffff',
+                    borderWidth: 4,
+                    hoverOffset: 8
+                }]
+            };
+
+            if (subjectChart) {
+                subjectChart.destroy();
+            }
+            
+            subjectChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '80%', // Makes it a "donut"
+                    plugins: {
+                        legend: {
+                            display: false // We use the custom HTML legend
+                        },
+                        tooltip: {
+                            enabled: true,
+                            backgroundColor: '#111827',
+                            titleFont: { size: 14 },
+                            bodyFont: { size: 12 },
+                            padding: 10,
+                            cornerRadius: 6,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + '%';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // --- Toast Notification ---
+        
+        const toast = document.getElementById('toast-notification');
+        const toastMessage = document.getElementById('toast-message');
+
+        function showToast(message, type = 'info') {
+            toastMessage.textContent = message;
+
+            toast.classList.remove('bg-blue-600', 'bg-green-600', 'bg-red-600');
+            if (type === 'success') {
+                toast.classList.add('bg-green-600');
+            } else if (type === 'error') {
+                toast.classList.add('bg-red-600');
+            } else {
+                toast.classList.add('bg-blue-600');
+            }
+
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // --- Logout Logic ---
+
+        function handleLogout() {
+            // Hide the modal
+            document.getElementById('logout-modal').classList.add('hidden');
+            
+            // Show a success toast
+            showToast('Logged out successfully!', 'success');
+            
+            // Navigate back to the "home" page (which would be the login page in a real app)
+            // For this demo, we'll just go back to the home dashboard.
+            setTimeout(() => {
+                 navigateTo('page-home');
+            }, 500);
+        }
+
+        // --- AI Chatbot ---
+        
+        const chatWidget = document.getElementById('chat-widget');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        let chatHistory = []; // We won't use this for the demo, but it's good practice
+
+        function toggleChat() {
+            chatWidget.classList.toggle('hidden');
+            chatWidget.classList.toggle('flex');
+        }
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const userInput = chatInput.value.trim();
+            if (!userInput) return;
+
+            addChatMessage(userInput, 'user');
+            chatInput.value = '';
+
+            addChatMessage('Boo is thinking...', 'ai', true);
+            
+            // Mock API call
+            callGeminiAPI(userInput, 'chat');
+        });
+
+        function addChatMessage(message, sender, isThinking = false) {
+            const bubble = document.createElement('div');
+            bubble.classList.add('flex');
+            const innerBubble = document.createElement('div');
+            innerBubble.classList.add('chat-bubble');
+
+            if (sender === 'user') {
+                innerBubble.classList.add('chat-bubble-user');
+                innerBubble.textContent = message;
+            } else {
+                innerBubble.classList.add('chat-bubble-ai');
+                innerBubble.textContent = message;
+                if(isThinking) {
+                    innerBubble.classList.add('thinking');
+                    innerBubble.id = 'thinking-bubble';
+                }
+            }
+
+            bubble.appendChild(innerBubble);
+            chatMessages.appendChild(bubble);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // --- Report Generation ---
+        
+        const reportModal = document.getElementById('report-modal');
+        const reportContent = document.getElementById('report-content');
+
+        function handleGenerateReport() {
+            showToast("Generating comprehensive progress report...");
+            
+            // Mock API call
+            callGeminiAPI(null, 'report');
+        }
+
+        // --- Mock Gemini API Call ---
+        // This function fakes a call to an AI, providing demo responses.
+        
+        function callGeminiAPI(userInput, mode) {
+            console.warn("Demo Mode: Faking Gemini API call for mode:", mode);
+            
+            // Start loading simulation
+            let loadingTime = 1500 + (Math.random() * 1000); // 1.5 - 2.5 seconds
+            
+            setTimeout(() => {
+                if (mode === 'chat') {
+                    let fakeResponse = "";
+                    const lowerInput = userInput.toLowerCase();
+
+                    if (lowerInput.includes("hello") || lowerInput.includes("hi")) {
+                        fakeResponse = "Hi there! I'm Boo. How can I help you with Akash's progress today?";
+                    } else if (lowerInput.includes("math") || lowerInput.includes("multiplication")) {
+                        fakeResponse = "Great question! Akash is doing well on quizzes (8/10!), but seems to be struggling a bit with multiplication tables 6-9. Maybe we can try some fun practice games?";
+                    } else if (lowerInput.includes("reading") || lowerInput.includes("comprehension")) {
+                        fakeResponse = "Akash is doing wonderfully in reading! His comprehension has improved by 15% this week. That's fantastic progress!";
+                    } else {
+                        fakeResponse = "That's an interesting question! I'm best at helping with learning progress. For example, you can ask me how Akash is doing in Math or Reading!";
+                    }
+
+                    const thinkingBubble = document.getElementById('thinking-bubble');
+                    if (thinkingBubble) {
+                        thinkingBubble.textContent = fakeResponse;
+                        thinkingBubble.classList.remove('thinking');
+                        thinkingBubble.id = '';
+                    }
+
+                } else if (mode === 'report') {
+                    
+                    const fakeReport = `**AI-Generated Progress Report (Demo)**
+-------------------------------------
+**Student:** Akash
+**Date:** ${new Date().toLocaleDateString()}
+
+**Overall Summary:**
+Akash is showing wonderful progress, especially in his reading comprehension! He's a curious learner, doing well in Science and acing his math quizzes. Our main focus right now is to build his confidence in multiplication.
+
+**Strengths:**
+* **Reading Comprehension:** Excellent! Akash's scores have improved by 15% this week.
+* **Science:** Showing great engagement with the new "Plants" module.
+* **Quiz Performance:** Scored a fantastic 8/10 on his recent math quiz.
+
+**Areas for Improvement:**
+* **Multiplication:** Akash seems to find the 6, 7, 8, and 9 multiplication tables a bit tricky. He also struggled with a recent division problem, which is related.
+* **Handwriting:** The demo shows some letter inconsistencies. We'll keep an eye on this to ensure he's forming letters comfortably.
+
+**Recommended Actions:**
+1.  **Multiplication Games:** Let's try some fun, game-based practice for those tricky multiplication tables.
+2.  **Review Division:** We can review the division concepts together after he's more confident with multiplication.
+
+Keep up the great work, Akash!`;
+                    
+                    showToast("Report Generated Successfully!", "success");
+                    reportContent.textContent = fakeReport;
+                    reportModal.classList.remove('hidden');
+                }
+            }, loadingTime);
+        }
+
+        // --- Initialization ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set user name
+            try {
+                // In a real app, you'd get this from login info. We'll just use the default.
+                document.getElementById('user-name-home').textContent = `Hi, ${currentUserName}!`;
+                document.getElementById('user-name-progress').textContent = `Hi, ${currentUserName}!`;
+                document.getElementById('welcome-banner').textContent = `Welcome back, ${currentUserName}!`;
+                document.getElementById('progress-welcome').textContent = `Hi ${currentUserName}!`;
+                document.getElementById('user-avatar-home').textContent = currentUserName.charAt(0).toUpperCase();
+                document.getElementById('user-avatar-progress').textContent = currentUserName.charAt(0).toUpperCase();
+            } catch (e) {
+                console.error("Error setting user name:", e);
+            }
+
+            // Render the chart
+            renderSubjectChart();
+            
+            // Set the initial page
+            navigateTo('page-home');
+        });
+
+    </script>
+
+</body>
+</html>
+
